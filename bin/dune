@@ -1,0 +1,4 @@
+(executable
+ (public_name repl)
+ (name repl)
+ (libraries token lexer stdio))

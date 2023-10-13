@@ -1,0 +1,4 @@
+if-then-else = vertical
+type-decl = sparse
+wrap-comments
+version = 0.26.1
