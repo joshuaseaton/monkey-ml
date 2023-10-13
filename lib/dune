@@ -39,3 +39,23 @@
  (inline_tests)
  (preprocess
   (pps ppx_inline_test ppx_assert)))
+
+(library
+ (name object)
+ (modules object)
+ (libraries ast sexplib)
+ (preprocess
+  (pps ppx_deriving.ord ppx_sexp_conv)))
+
+(library
+ (name evaluator)
+ (modules evaluator)
+ (libraries ast object token))
+
+(library
+ (name evaluator_test)
+ (modules evaluator_test)
+ (libraries evaluator sexplib)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_assert)))
