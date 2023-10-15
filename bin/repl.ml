@@ -1,11 +1,3 @@
-let rec print_tokens (lexer : Lexer.t) =
-  let lexer, token = Lexer.next_token lexer in
-  match token with
-  | None -> ()
-  | Some token ->
-      print_endline (Token.to_string token);
-      print_tokens lexer
-
 let rec start () =
   let open Stdio in
   print_string ">> ";
@@ -13,8 +5,11 @@ let rec start () =
   match In_channel.input_line In_channel.stdin with
   | None -> ()
   | Some line ->
-      let lexer = Lexer.create line in
-      print_tokens lexer;
+      (let lexer = Lexer.create line in
+       let parser = Parser.create lexer in
+       match Parser.parse parser with
+       | Error err -> print_endline err
+       | Ok node -> print_endline (Ast.node_to_string node));
       start ()
 
 let () =

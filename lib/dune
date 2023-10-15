@@ -17,3 +17,25 @@
  (inline_tests)
  (preprocess
   (pps ppx_inline_test ppx_assert)))
+
+(library
+ (name ast)
+ (modules ast)
+ (libraries sexplib token)
+ (preprocess
+  (pps ppx_compare ppx_sexp_conv)))
+
+(library
+ (name parser)
+ (modules parser)
+ (libraries ast lexer token)
+ (preprocess
+  (pps ppx_deriving.ord)))
+
+(library
+ (name parser_test)
+ (modules parser_test)
+ (libraries parser sexplib)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_assert)))
