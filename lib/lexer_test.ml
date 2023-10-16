@@ -112,6 +112,14 @@ let%test_unit "next token" =
         input = "10 != 9;";
         expected = [ Integer "10"; Not_equal; Integer "9"; Semicolon ];
       };
+      {
+        input = {|"a string literal"|};
+        expected = [ Token.String "a string literal" ];
+      };
+      {
+        input = {|"an unterminated string|};
+        expected = [ Token.Unterminated_string "an unterminated string" ];
+      };
     ]
   in
   List.iter test_case cases

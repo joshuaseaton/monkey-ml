@@ -30,6 +30,10 @@ let%test_unit "let statements" =
         input = "let foobar = 838383;";
         expected = Let ("foobar", Integer 838383);
       };
+      {
+        input = {|let str = "this is a string";|};
+        expected = Let ("str", Ast.String "this is a string");
+      };
     ]
   in
   List.iter test_statement cases
@@ -85,6 +89,10 @@ let%test_unit "infix expressions" =
       {
         input = "false == false";
         expected = Infix (Boolean false, Equal, Boolean false);
+      };
+      {
+        input = {|"x" + "y"|};
+        expected = Infix (Ast.String "x", Token.Plus, Ast.String "y");
       };
     ]
   in

@@ -11,6 +11,7 @@ and expression =
   | Identifier of string
   | Boolean of bool
   | Integer of int
+  | String of string
   | Prefix of Token.t * expression
   | Infix of expression * Token.t * expression
   | If of expression * statement list * statement list option
@@ -46,6 +47,7 @@ and expression_to_string = function
   | Identifier s -> s
   | Boolean b -> string_of_bool b
   | Integer n -> string_of_int n
+  | String s -> Printf.sprintf "%S" s
   | Prefix (op, right) ->
       Printf.sprintf "(%s%s)" (Token.to_string op) (expression_to_string right)
   | Infix (left, op, right) ->

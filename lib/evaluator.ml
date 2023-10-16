@@ -20,6 +20,7 @@ let object_type_string = function
   | Object.Null -> "NULL"
   | Object.Boolean _ -> "BOOLEAN"
   | Object.Integer _ -> "INTEGER"
+  | Object.String _ -> "STRING"
   | Object.Function _ -> "FUNCTION"
 
 let rec eval (node : Ast.node) (env : Environment.t) :
@@ -68,6 +69,7 @@ and eval_expression (expr : Ast.expression) (env : Environment.t) :
   match expr with
   | Ast.Integer n -> Ok (Object.Integer n)
   | Ast.Boolean b -> Ok (Object.Boolean b)
+  | Ast.String s -> Ok (Object.String s)
   | Ast.Prefix (op, right) -> eval_prefix_expression op right env
   | Ast.Infix (left, op, right) -> eval_infix_expression left op right env
   | Ast.If (cond, cons, alt) -> eval_if_expression cond cons alt env
@@ -122,6 +124,12 @@ and eval_infix_expression (left : Ast.expression) (op : Token.t)
       | Token.Minus -> Ok (Object.Integer (a - b))
       | Token.Asterisk -> Ok (Object.Integer (a * b))
       | Token.Slash -> Ok (Object.Integer (a / b))
+      | _ -> Error (invalid_operation left op right))
+  | Object.String a, Object.String b -> (
+      match op with
+      | Token.Plus -> Ok (Object.String (a ^ b))
+      | Token.Equal -> Ok (Object.Boolean (a == b))
+      | Token.Not_equal -> Ok (Object.Boolean (a != b))
       | _ -> Error (invalid_operation left op right))
   | _ -> Error (invalid_operation left op right)
 

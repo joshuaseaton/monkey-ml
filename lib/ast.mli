@@ -8,6 +8,7 @@ and expression =
   | Identifier of string
   | Boolean of bool
   | Integer of int
+  | String of string
   | Prefix of Token.t * expression
   | Infix of expression * Token.t * expression
   | If of expression * statement list * statement list option

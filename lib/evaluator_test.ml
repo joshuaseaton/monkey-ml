@@ -317,6 +317,53 @@ let%test_unit "booleans expressions" =
               Boolean false );
         expected = Object.Boolean true;
       };
+      (* "x" == "x" *)
+      {
+        input = Infix (Ast.String "x", Token.Equal, Ast.String "x");
+        expected = Object.Boolean true;
+      };
+      (* "x" == "y" *)
+      {
+        input = Infix (Ast.String "x", Token.Equal, Ast.String "y");
+        expected = Object.Boolean false;
+      };
+      (* "x" != "x" *)
+      {
+        input = Infix (Ast.String "x", Token.Not_equal, Ast.String "x");
+        expected = Object.Boolean false;
+      };
+      (* "x" != "y" *)
+      {
+        input = Infix (Ast.String "x", Token.Not_equal, Ast.String "y");
+        expected = Object.Boolean true;
+      };
+    ]
+  in
+  List.iter test_expression cases
+
+let%test_unit "string expressions" =
+  let open Ast in
+  let cases =
+    [
+      (* "x" *)
+      { input = Ast.String "x"; expected = Object.String "x" };
+      (* "x" + "y" *)
+      {
+        input = Infix (Ast.String "x", Token.Plus, Ast.String "y");
+        expected = Object.String "xy";
+      };
+      (* "a" + "bc" + "def" + "g" *)
+      {
+        input =
+          Infix
+            ( Infix
+                ( Infix (Ast.String "a", Token.Plus, Ast.String "bc"),
+                  Token.Plus,
+                  Ast.String "def" ),
+              Token.Plus,
+              Ast.String "g" );
+        expected = Object.String "abcdefg";
+      };
     ]
   in
   List.iter test_expression cases

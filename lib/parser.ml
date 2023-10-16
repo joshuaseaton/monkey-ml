@@ -107,11 +107,14 @@ and parse_expression (parser : t) (prec : precedence) :
     | Some (Token.Identifier _) -> parse_identifier parser
     | Some (Token.Boolean _) -> parse_boolean parser
     | Some (Token.Integer _) -> parse_integer parser
+    | Some (Token.String _) -> parse_string_literal parser
     | Some (Token.Bang | Token.Minus) -> parse_prefix_expression parser
     | Some Token.Left_paren -> parse_grouped_expression parser
     | Some Token.If -> parse_if_expression parser
     | Some Token.Function -> parse_function_expression parser
     | Some (Token.Illegal c) -> Error (Printf.sprintf "illegal character: %c" c)
+    | Some (Token.Unterminated_string s) ->
+        Error (Printf.sprintf "unterminated string: \"%s" s)
     | _ ->
         Error
           (Printf.sprintf "unexpected expression token %s"
@@ -160,6 +163,14 @@ and parse_integer (parser : t) : (t * Ast.expression, error) result =
   | _ ->
       Error
         (Printf.sprintf "expected integer; got %s"
+           (token_opt_to_string parser.token))
+
+and parse_string_literal (parser : t) : (t * Ast.expression, error) result =
+  match parser.token with
+  | Some (Token.String s) -> Ok (advance parser, Ast.String s)
+  | _ ->
+      Error
+        (Printf.sprintf "expected string; got %s"
            (token_opt_to_string parser.token))
 
 and parse_prefix_expression (parser : t) : (t * Ast.expression, error) result =
