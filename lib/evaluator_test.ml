@@ -494,6 +494,40 @@ let%test_unit "error handling" =
               None );
         expected = "invalid operation: BOOLEAN + BOOLEAN";
       };
+      (* len() *)
+      {
+        input = Call (Ast.Identifier "len", []);
+        expected = "len takes one argument; 0 provided";
+      };
+      (* len("a", "b") *)
+      {
+        input = Call (Ast.Identifier "len", [ Ast.String "a"; Ast.String "b" ]);
+        expected = "len takes one argument; 2 provided";
+      };
+      (* len(true) *)
+      {
+        input = Call (Ast.Identifier "len", [ Boolean true ]);
+        expected = "invalid expression: len(BOOLEAN)";
+      };
+      (* len(5) *)
+      {
+        input = Call (Ast.Identifier "len", [ Integer 5 ]);
+        expected = "invalid expression: len(INTEGER)";
+      };
+      (* len(fn(x){x}) *)
+      {
+        input =
+          Call
+            ( Ast.Identifier "len",
+              [ Function ([ "x" ], [ Expression_statement (Identifier "x") ]) ]
+            );
+        expected = "invalid expression: len(FUNCTION)";
+      };
+      (* len(len) *)
+      {
+        input = Call (Ast.Identifier "len", [ Identifier "len" ]);
+        expected = "invalid expression: len(BUILTIN)";
+      };
     ]
   in
   List.iter test_error cases
@@ -635,6 +669,31 @@ let%test_unit "function application" =
                    [ Integer 5 ] ));
           ];
         expected = Object.Integer 5;
+      };
+      (* len("1234") *)
+      {
+        input =
+          [
+            Expression_statement
+              (Call (Identifier "len", [ Ast.String "1234" ]));
+          ];
+        expected = Object.Integer 4;
+      };
+      (* len("Hello " + " " + "World!") *)
+      {
+        input =
+          [
+            Expression_statement
+              (Call
+                 ( Identifier "len",
+                   [
+                     Infix
+                       ( Infix (Ast.String "Hello", Token.Plus, Ast.String " "),
+                         Token.Plus,
+                         Ast.String "World!" );
+                   ] ));
+          ];
+        expected = Object.Integer 12;
       };
     ]
   in

@@ -1,18 +1,32 @@
-module Objmap = Map.Make (String)
+type error = string
 
 module Environment = struct
+  module Objmap = Map.Make (String)
+
   type t = Object.t Objmap.t
 
-  let create : t = Objmap.empty
+  type builtin = {
+    name : string;
+    value : Object.t;
+  }
+
+  let builtins = [ { name = "len"; value = Object.Builtin Object.Len } ]
 
   let get_opt (env : t) (name : string) : Object.t option =
     Objmap.find_opt name env
 
-  let set (env : t) (name : string) (obj : Object.t) : t =
-    Objmap.add name obj env
-end
+  let set (env : t) (name : string) (obj : Object.t) : (t, error) result =
+    if List.mem name (List.map (fun builtin -> builtin.name) builtins) then
+      Error
+        (Printf.sprintf "`%s` is a built-in function and cannot be redefined"
+           name)
+    else
+      Ok (Objmap.add name obj env)
 
-type error = string
+  let create : t =
+    let set_builtin builtin env = Objmap.add builtin.name builtin.value env in
+    List.fold_right set_builtin builtins Objmap.empty
+end
 
 let ( let* ) res f = Result.bind res f
 
@@ -21,6 +35,7 @@ let object_type_string = function
   | Object.Boolean _ -> "BOOLEAN"
   | Object.Integer _ -> "INTEGER"
   | Object.String _ -> "STRING"
+  | Object.Builtin _ -> "BUILTIN"
   | Object.Function _ -> "FUNCTION"
 
 let rec eval (node : Ast.node) (env : Environment.t) :
@@ -60,7 +75,8 @@ and eval_statement (stmt : Ast.statement) (env : Environment.t) :
       Ok (value, true, env)
   | Ast.Let (ident, expr) ->
       let* value = eval_expression expr env in
-      Ok (Object.Null, false, Environment.set env ident value)
+      let* env = Environment.set env ident value in
+      Ok (Object.Null, false, env)
 
 (* Environment is not returned, as the evaluation of an expression should not
    affect the environment in the containing scope. *)
@@ -163,11 +179,19 @@ and eval_call_expression (func : Ast.expression) (args : Ast.expression list)
     | Error _ -> env_or_err
     | Ok env ->
         let* value = eval_expression arg env in
-        Ok (Environment.set env param value)
+        let* env = Environment.set env param value in
+        Ok env
   in
 
   let* value = eval_expression func env in
   match value with
+  | Object.Builtin Object.Len -> (
+      match args with
+      | [ arg ] -> eval_len_expression arg env
+      | _ ->
+          Error
+            (Printf.sprintf "len takes one argument; %d provided"
+               (List.length args)))
   | Object.Function (params, body) -> (
       match List.fold_right2 substitute_param params args (Ok env) with
       | exception Stdlib.Invalid_argument _ ->
@@ -188,3 +212,12 @@ and eval_call_expression (func : Ast.expression) (args : Ast.expression list)
   | _ ->
       Error
         (Printf.sprintf "%s is not a function" (Ast.expression_to_string func))
+
+and eval_len_expression (arg : Ast.expression) (env : Environment.t) :
+    (Object.t, error) result =
+  let* value = eval_expression arg env in
+  match value with
+  | Object.String s -> Ok (Object.Integer (String.length s))
+  | _ ->
+      Error
+        (Printf.sprintf "invalid expression: len(%s)" (object_type_string value))

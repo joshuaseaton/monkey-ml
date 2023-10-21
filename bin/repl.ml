@@ -18,7 +18,7 @@ let rec start (env : Evaluator.Environment.t) =
               start env
           | Ok (obj, env) ->
               (match obj with
-              | Null -> ()
+              | Null | Builtin _ -> ()
               | _ -> print_endline (Object.to_string obj));
               start env))
 
