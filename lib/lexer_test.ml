@@ -120,6 +120,18 @@ let%test_unit "next token" =
         input = {|"an unterminated string|};
         expected = [ Token.Unterminated_string "an unterminated string" ];
       };
+      {
+        input = "[1, 2];";
+        expected =
+          [
+            Left_bracket;
+            Integer "1";
+            Comma;
+            Integer "2";
+            Right_bracket;
+            Semicolon;
+          ];
+      };
     ]
   in
   List.iter test_case cases

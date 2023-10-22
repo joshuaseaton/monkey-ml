@@ -55,7 +55,7 @@
 (library
  (name evaluator_test)
  (modules evaluator_test)
- (libraries evaluator sexplib)
+ (libraries evaluator lexer parser sexplib)
  (inline_tests)
  (preprocess
   (pps ppx_inline_test ppx_assert)))

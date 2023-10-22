@@ -28,6 +28,8 @@ type t =
   | Right_paren
   | Left_brace
   | Right_brace
+  | Left_bracket
+  | Right_bracket
   (* Keywords *)
   | Function
   | Let
@@ -60,6 +62,8 @@ let to_string (token : t) : string =
   | Right_paren -> ")"
   | Left_brace -> "{"
   | Right_brace -> "}"
+  | Left_bracket -> "["
+  | Right_bracket -> "]"
   | Function -> "fn"
   | Let -> "let"
   | If -> "if"

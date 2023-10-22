@@ -12,8 +12,10 @@ and expression =
   | Boolean of bool
   | Integer of int
   | String of string
+  | Array of expression list
   | Prefix of Token.t * expression
   | Infix of expression * Token.t * expression
+  | Index of expression * expression
   | If of expression * statement list * statement list option
   | Function of string list * statement list
   | Call of expression * expression list
@@ -48,6 +50,7 @@ and expression_to_string = function
   | Boolean b -> string_of_bool b
   | Integer n -> string_of_int n
   | String s -> Printf.sprintf "%S" s
+  | Array arr -> "[" ^ concat arr expression_to_string ", " ^ "]"
   | Prefix (op, right) ->
       Printf.sprintf "(%s%s)" (Token.to_string op) (expression_to_string right)
   | Infix (left, op, right) ->
@@ -55,6 +58,10 @@ and expression_to_string = function
         (expression_to_string left)
         (Token.to_string op)
         (expression_to_string right)
+  | Index (array, index) ->
+      Printf.sprintf "%s[%s]"
+        (expression_to_string array)
+        (expression_to_string index)
   | If (cond, cons, alt) -> (
       match alt with
       | None ->

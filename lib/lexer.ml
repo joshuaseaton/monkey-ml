@@ -89,6 +89,8 @@ let next_token (lexer : t) : t * Token.t option =
       | ')' -> (advance lexer, Some Token.Right_paren)
       | '{' -> (advance lexer, Some Token.Left_brace)
       | '}' -> (advance lexer, Some Token.Right_brace)
+      | '[' -> (advance lexer, Some Token.Left_bracket)
+      | ']' -> (advance lexer, Some Token.Right_bracket)
       | '"' -> read_string_literal lexer
       | _ ->
           if is_identifier_char ch then

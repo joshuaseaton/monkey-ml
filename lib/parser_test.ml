@@ -310,3 +310,58 @@ let%test_unit "call expressions" =
     }
   in
   test_expression case
+
+let%test_unit "array expressions" =
+  let open Ast in
+  let open Token in
+  let case =
+    [
+      {
+        input = "[1, 2 * 2, 3 + 3]";
+        expected =
+          Array
+            [
+              Integer 1;
+              Infix (Integer 2, Asterisk, Integer 2);
+              Infix (Integer 3, Plus, Integer 3);
+            ];
+      };
+      {
+        input = "myArray[1 + 1]";
+        expected =
+          Index (Identifier "myArray", Infix (Integer 1, Token.Plus, Integer 1));
+      };
+      {
+        input = "a * [1, 2, 3, 4][b * c] * d";
+        expected =
+          Infix
+            ( Infix
+                ( Identifier "a",
+                  Token.Asterisk,
+                  Index
+                    ( Array [ Integer 1; Integer 2; Integer 3; Integer 4 ],
+                      Infix (Identifier "b", Token.Asterisk, Identifier "c") )
+                ),
+              Token.Asterisk,
+              Identifier "d" );
+      };
+      {
+        input = "add(a * b[2], b[1], 2 * [1, 2][1])";
+        expected =
+          Call
+            ( Identifier "add",
+              [
+                Infix
+                  ( Identifier "a",
+                    Token.Asterisk,
+                    Index (Identifier "b", Integer 2) );
+                Index (Identifier "b", Integer 1);
+                Infix
+                  ( Integer 2,
+                    Token.Asterisk,
+                    Index (Array [ Integer 1; Integer 2 ], Integer 1) );
+              ] );
+      };
+    ]
+  in
+  List.iter test_expression case

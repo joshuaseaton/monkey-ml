@@ -10,16 +10,32 @@ type expression_case = (Ast.expression, Object.t) case
 type statements_case = (Ast.statement list, Object.t) case
 type error_case = (Ast.expression, string) case
 
-let test_node (input : Ast.node) (expected : Object.t) =
-  match Evaluator.eval input Evaluator.Environment.create with
+let test_node ?(env : Evaluator.Environment.t option) (input : Ast.node)
+    (expected : Object.t) =
+  let env =
+    match env with None -> Evaluator.Environment.create | Some env -> env
+  in
+  match Evaluator.eval input env with
   | Error err -> failwith err
   | Ok (actual, _) -> [%test_result: Object.t] ~expect:expected actual
 
-let test_expression (case : expression_case) =
-  test_node (Ast.Expression case.input) case.expected
+let test_expression ?(env : Evaluator.Environment.t option)
+    (case : expression_case) =
+  test_node ?env (Ast.Expression case.input) case.expected
 
-let test_statements (case : statements_case) =
-  test_node (Ast.Program case.input) case.expected
+let test_statements ?(env : Evaluator.Environment.t option)
+    (case : statements_case) =
+  test_node ?env (Ast.Program case.input) case.expected
+
+let env_from_source (source : string) : Evaluator.Environment.t =
+  let lexer = Lexer.create source in
+  let parser = Parser.create lexer in
+  let prog =
+    match Parser.parse parser with Ok prog -> prog | Error err -> failwith err
+  in
+  match Evaluator.eval prog Evaluator.Environment.create with
+  | Ok (_, env) -> env
+  | Error err -> failwith err
 
 let test_error (case : error_case) =
   match
@@ -497,12 +513,12 @@ let%test_unit "error handling" =
       (* len() *)
       {
         input = Call (Ast.Identifier "len", []);
-        expected = "len takes one argument; 0 provided";
+        expected = "len() takes 1 argument; 0 provided";
       };
       (* len("a", "b") *)
       {
         input = Call (Ast.Identifier "len", [ Ast.String "a"; Ast.String "b" ]);
-        expected = "len takes one argument; 2 provided";
+        expected = "len() takes 1 argument; 2 provided";
       };
       (* len(true) *)
       {
@@ -698,3 +714,179 @@ let%test_unit "function application" =
     ]
   in
   List.iter test_statements cases
+
+let%test_unit "array index expressions" =
+  let open Ast in
+  let cases =
+    [
+      (* [1, 2, 3][0] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Array [ Integer 1; Integer 2; Integer 3 ], Integer 0));
+          ];
+        expected = Object.Integer 1;
+      };
+      (* [1, 2, 3][1] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Array [ Integer 1; Integer 2; Integer 3 ], Integer 1));
+          ];
+        expected = Object.Integer 2;
+      };
+      (* [1, 2, 3][2] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Array [ Integer 1; Integer 2; Integer 3 ], Integer 2));
+          ];
+        expected = Object.Integer 3;
+      };
+      (* let i = 0; [1][i]; *)
+      {
+        input =
+          [
+            Let ("i", Integer 0);
+            Expression_statement (Index (Array [ Integer 1 ], Identifier "i"));
+          ];
+        expected = Object.Integer 1;
+      };
+      (* [1, 2, 3][ 1 + 1] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index
+                 ( Array [ Integer 1; Integer 2; Integer 3 ],
+                   Infix (Integer 1, Token.Plus, Integer 1) ));
+          ];
+        expected = Object.Integer 3;
+      };
+      (* let myArray = [1, 2, 3]; myArray[2]; *)
+      {
+        input =
+          [
+            Let ("myArray", Array [ Integer 1; Integer 2; Integer 3 ]);
+            Expression_statement (Index (Identifier "myArray", Integer 2));
+          ];
+        expected = Object.Integer 3;
+      };
+      (* let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2]; *)
+      {
+        input =
+          [
+            Let ("myArray", Array [ Integer 1; Integer 2; Integer 3 ]);
+            Expression_statement
+              (Infix
+                 ( Infix
+                     ( Index (Identifier "myArray", Integer 0),
+                       Token.Plus,
+                       Index (Identifier "myArray", Integer 1) ),
+                   Token.Plus,
+                   Index (Identifier "myArray", Integer 2) ));
+          ];
+        expected = Object.Integer 6;
+      };
+      (* [1, 2, 3][3] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Array [ Integer 1; Integer 2; Integer 3 ], Integer 3));
+          ];
+        expected = Object.Null;
+      };
+      (* [1, 2, 3][-1] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Array [ Integer 1; Integer 2; Integer 3 ], Integer (-1)));
+          ];
+        expected = Object.Null;
+      };
+    ]
+  in
+  List.iter test_statements cases
+
+let%test_unit "map" =
+  let open Ast in
+  let source =
+    {|
+    let map = fn(arr, f) {
+      let iter = fn(arr, accumulated) {
+        if (len(arr) == 0) {
+          accumulated
+        } else {
+          iter(rest(arr), push(accumulated, f(first(arr))))
+        }
+      };
+      iter(arr, [])
+    };
+  |}
+  in
+  let env = env_from_source source in
+  let case =
+    {
+      input =
+        [
+          Let ("a", Array [ Integer 1; Integer 2; Integer 3; Integer 4 ]);
+          Let
+            ( "double",
+              Function
+                ( [ "x" ],
+                  [
+                    Expression_statement
+                      (Infix (Identifier "x", Token.Asterisk, Integer 2));
+                  ] ) );
+          Expression_statement
+            (Call (Identifier "map", [ Identifier "a"; Identifier "double" ]));
+        ];
+      expected =
+        Object.Array
+          [
+            Object.Integer 2;
+            Object.Integer 4;
+            Object.Integer 6;
+            Object.Integer 8;
+          ];
+    }
+  in
+  test_statements ?env:(Some env) case
+
+let%test_unit "reduce" =
+  let open Ast in
+  let source =
+    {|
+    let reduce = fn(arr, initial, f) {
+      let iter = fn(arr, reduced) {
+        if (len(arr) == 0) {
+          reduced
+        } else {
+          iter(rest(arr), f(reduced, first(arr)))
+        }
+      };
+      iter(arr, initial)
+    };
+
+    let sum = fn(arr) {
+      reduce(arr, 0, fn(initial, el) { initial + el })
+    };
+  |}
+  in
+  let env = env_from_source source in
+  let case =
+    {
+      input =
+        Call
+          ( Identifier "sum",
+            [ Array [ Integer 1; Integer 2; Integer 3; Integer 4; Integer 5 ] ]
+          );
+      expected = Object.Integer 15;
+    }
+  in
+  test_expression ?env:(Some env) case

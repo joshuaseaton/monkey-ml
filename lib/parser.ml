@@ -6,6 +6,7 @@ type precedence =
   | Product
   | Prefix
   | Call
+  | Index
 [@@deriving ord]
 
 let get_infix_precedence (tok : Token.t) : precedence =
@@ -15,6 +16,7 @@ let get_infix_precedence (tok : Token.t) : precedence =
   | Token.Plus | Token.Minus -> Sum
   | Token.Asterisk | Token.Slash -> Product
   | Token.Left_paren -> Call
+  | Token.Left_bracket -> Index
   | _ -> Lowest
 
 type error = string
@@ -110,6 +112,7 @@ and parse_expression (parser : t) (prec : precedence) :
     | Some (Token.String _) -> parse_string_literal parser
     | Some (Token.Bang | Token.Minus) -> parse_prefix_expression parser
     | Some Token.Left_paren -> parse_grouped_expression parser
+    | Some Token.Left_bracket -> parse_array_expression parser
     | Some Token.If -> parse_if_expression parser
     | Some Token.Function -> parse_function_expression parser
     | Some (Token.Illegal c) -> Error (Printf.sprintf "illegal character: %c" c)
@@ -132,6 +135,9 @@ and parse_expression (parser : t) (prec : precedence) :
         parse_from_infix parser expr prec
     | Some Token.Left_paren ->
         let* parser, expr = parse_call_expression parser left in
+        parse_from_infix parser expr prec
+    | Some Token.Left_bracket ->
+        let* parser, expr = parse_index_expression parser left in
         parse_from_infix parser expr prec
     | _ -> Ok (parser, left)
   in
@@ -172,6 +178,21 @@ and parse_string_literal (parser : t) : (t * Ast.expression, error) result =
       Error
         (Printf.sprintf "expected string; got %s"
            (token_opt_to_string parser.token))
+
+and parse_array_expression (parser : t) : (t * Ast.expression, error) result =
+  let rec parse_elements parser =
+    match parser.token with
+    | Some Token.Right_bracket -> Ok (parser, [])
+    | _ ->
+        let* parser, el = parse_expression parser Lowest in
+        let parser = maybe_consume_token parser Token.Comma in
+        let* parser, els = parse_elements parser in
+        Ok (parser, el :: els)
+  in
+  let* parser = consume_token parser Token.Left_bracket in
+  let* parser, els = parse_elements parser in
+  let* parser = consume_token parser Token.Right_bracket in
+  Ok (parser, Ast.Array els)
 
 and parse_prefix_expression (parser : t) : (t * Ast.expression, error) result =
   let parse_prefix_operator parser =
@@ -276,3 +297,10 @@ and parse_call_expression (parser : t) (func : Ast.expression) :
   let* parser, args = parse_args parser in
   let* parser = consume_token parser Token.Right_paren in
   Ok (parser, Ast.Call (func, args))
+
+and parse_index_expression (parser : t) (array : Ast.expression) :
+    (t * Ast.expression, error) result =
+  let* parser = consume_token parser Token.Left_bracket in
+  let* parser, expr = parse_expression parser Lowest in
+  let* parser = consume_token parser Token.Right_bracket in
+  Ok (parser, Ast.Index (array, expr))

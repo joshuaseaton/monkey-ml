@@ -9,8 +9,10 @@ and expression =
   | Boolean of bool
   | Integer of int
   | String of string
+  | Array of expression list
   | Prefix of Token.t * expression
   | Infix of expression * Token.t * expression
+  | Index of expression * expression
   | If of expression * statement list * statement list option
   | Function of string list * statement list
   | Call of expression * expression list
