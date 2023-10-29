@@ -17,6 +17,7 @@ module Environment = struct
       { name = "last"; value = Object.Builtin Object.Last };
       { name = "rest"; value = Object.Builtin Object.Rest };
       { name = "push"; value = Object.Builtin Object.Push };
+      { name = "puts"; value = Object.Builtin Object.Puts };
     ]
 
   let get_opt (env : t) (name : string) : Object.t option =
@@ -294,7 +295,11 @@ and eval_call_expression (func : Ast.expression) (args : Ast.expression list)
       | Object.Push -> (
           match args with
           | [ arr; value ] -> eval_push_array_expression arr value env
-          | _ -> wrong_num_args 2))
+          | _ -> wrong_num_args 2)
+      | Object.Puts -> (
+          match args with
+          | [ value ] -> eval_puts_expression value env
+          | _ -> wrong_num_args 1))
   | Object.Function (params, body) -> (
       match List.fold_right2 substitute_param params args (Ok env) with
       | exception Stdlib.Invalid_argument _ ->
@@ -374,3 +379,9 @@ and eval_push_array_expression (arr : Ast.expression) (elem : Ast.expression)
       Error
         (Printf.sprintf "invalid expression: push(%s, %s)"
            (object_type_string arr) (object_type_string elem))
+
+and eval_puts_expression (value : Ast.expression) (env : Environment.t) :
+    (Object.t, error) result =
+  let* value = eval_expression value env in
+  print_endline (Object.to_string value);
+  Ok Object.Null

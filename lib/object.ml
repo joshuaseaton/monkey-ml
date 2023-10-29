@@ -7,6 +7,7 @@ type builtin =
   | Last
   | Rest
   | Push
+  | Puts
 [@@deriving ord, sexp_of]
 
 (* Object is an expedient module wrapper only intended to aid in the recursive
@@ -101,7 +102,8 @@ let rec to_string = function
       | First -> "first()"
       | Last -> "last()"
       | Rest -> "rest()"
-      | Push -> "push()")
+      | Push -> "push()"
+      | Puts -> "puts()")
   | Function (params, body) ->
       Ast.expression_to_string (Ast.Function (params, body))
 
