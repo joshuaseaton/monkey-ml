@@ -24,6 +24,7 @@ type t =
   (* Delimiters *)
   | Comma
   | Semicolon
+  | Colon
   | Left_paren
   | Right_paren
   | Left_brace
@@ -58,6 +59,7 @@ let to_string (token : t) : string =
   | Greater_than -> ">"
   | Comma -> ","
   | Semicolon -> ";"
+  | Colon -> ":"
   | Left_paren -> "("
   | Right_paren -> ")"
   | Left_brace -> "{"

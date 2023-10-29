@@ -13,6 +13,7 @@ and expression =
   | Integer of int
   | String of string
   | Array of expression list
+  | Hash of (expression * expression) list
   | Prefix of Token.t * expression
   | Infix of expression * Token.t * expression
   | Index of expression * expression
@@ -50,6 +51,12 @@ and expression_to_string = function
   | Boolean b -> string_of_bool b
   | Integer n -> string_of_int n
   | String s -> Printf.sprintf "%S" s
+  | Hash pairs ->
+      let pair_to_string pair =
+        let k, v = pair in
+        expression_to_string k ^ ": " ^ expression_to_string v
+      in
+      "{" ^ concat pairs pair_to_string ", " ^ "}"
   | Array arr -> "[" ^ concat arr expression_to_string ", " ^ "]"
   | Prefix (op, right) ->
       Printf.sprintf "(%s%s)" (Token.to_string op) (expression_to_string right)

@@ -85,6 +85,7 @@ let next_token (lexer : t) : t * Token.t option =
       | '<' -> (advance lexer, Some Token.Less_than)
       | '>' -> (advance lexer, Some Token.Greater_than)
       | ';' -> (advance lexer, Some Token.Semicolon)
+      | ':' -> (advance lexer, Some Token.Colon)
       | '(' -> (advance lexer, Some Token.Left_paren)
       | ')' -> (advance lexer, Some Token.Right_paren)
       | '{' -> (advance lexer, Some Token.Left_brace)

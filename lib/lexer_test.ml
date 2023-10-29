@@ -132,6 +132,11 @@ let%test_unit "next token" =
             Semicolon;
           ];
       };
+      {
+        input = {| {"foo": "bar"} |};
+        expected =
+          [ Left_brace; String "foo"; Colon; String "bar"; Right_brace ];
+      };
     ]
   in
   List.iter test_case cases

@@ -45,7 +45,7 @@
  (modules object)
  (libraries ast sexplib)
  (preprocess
-  (pps ppx_deriving.ord ppx_sexp_conv)))
+  (pps ppx_compare ppx_deriving.ord ppx_sexp_conv)))
 
 (library
  (name evaluator)

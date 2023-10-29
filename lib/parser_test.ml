@@ -365,3 +365,32 @@ let%test_unit "array expressions" =
     ]
   in
   List.iter test_expression case
+
+let%test_unit "hash expressions" =
+  let open Ast in
+  let cases =
+    [
+      {
+        input = {| {"one": 1, "two": 2, "three" : 3 } |};
+        expected =
+          Hash
+            [
+              (String "one", Integer 1);
+              (String "two", Integer 2);
+              (String "three", Integer 3);
+            ];
+      };
+      { input = "{}"; expected = Hash [] };
+      {
+        input = {| {"one": 0 + 1, "two": 10 - 8, "three" : 15 / 5} |};
+        expected =
+          Hash
+            [
+              (String "one", Infix (Integer 0, Token.Plus, Integer 1));
+              (String "two", Infix (Integer 10, Token.Minus, Integer 8));
+              (String "three", Infix (Integer 15, Token.Slash, Integer 5));
+            ];
+      };
+    ]
+  in
+  List.iter test_expression cases

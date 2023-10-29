@@ -544,6 +544,24 @@ let%test_unit "error handling" =
         input = Call (Ast.Identifier "len", [ Identifier "len" ]);
         expected = "invalid expression: len(BUILTIN)";
       };
+      (* {fn(x) {x}: "Monkey"} *)
+      {
+        input =
+          Hash
+            [
+              ( Function ([ "x" ], [ Expression_statement (Identifier "x") ]),
+                String "Monkey" );
+            ];
+        expected = "invalid hash key type: FUNCTION";
+      };
+      (* {"name": "Monkey"}[fn(x) {x}] *)
+      {
+        input =
+          Index
+            ( Hash [ (String "name", String "Monkey") ],
+              Function ([ "x" ], [ Expression_statement (Identifier "x") ]) );
+        expected = "invalid hash key type: FUNCTION";
+      };
     ]
   in
   List.iter test_error cases
@@ -890,3 +908,121 @@ let%test_unit "reduce" =
     }
   in
   test_expression ?env:(Some env) case
+
+let%test_unit "hash expressions" =
+  let open Ast in
+  let make_hash pairs =
+    let add hash pair =
+      let key, data = pair in
+      let hash, ok = Object.Hash.add hash key data in
+      if ok then
+        hash
+      else
+        failwith (Printf.sprintf "%s is a duplicate key" (Object.to_string key))
+    in
+    Object.Hash (List.fold_left add (Object.Hash.create ()) pairs)
+  in
+
+  let cases =
+    [
+      (*
+       * let two = "two";
+       * {
+       *   "one": 10 - 9,
+       *    two: 1 + 1,
+       *   "thr" + "ee": 6 / 2,
+       *   4: 4,
+       *   true: 5,
+       *   false: 6,
+       * }
+       *)
+      {
+        input =
+          [
+            Let ("two", String "two");
+            Expression_statement
+              (Hash
+                 [
+                   (String "one", Infix (Integer 10, Token.Minus, Integer 9));
+                   (Identifier "two", Infix (Integer 1, Token.Plus, Integer 1));
+                   ( Infix (String "thr", Token.Plus, String "ee"),
+                     Infix (Integer 6, Token.Slash, Integer 2) );
+                   (Integer 4, Integer 4);
+                   (Boolean true, Integer 5);
+                   (Boolean false, Integer 6);
+                 ]);
+          ];
+        expected =
+          make_hash
+            [
+              (Object.String "one", Object.Integer 1);
+              (Object.String "two", Object.Integer 2);
+              (Object.String "three", Object.Integer 3);
+              (Object.Integer 4, Object.Integer 4);
+              (Object.Boolean true, Object.Integer 5);
+              (Object.Boolean false, Object.Integer 6);
+            ];
+      };
+      (* {"foo": 5}["foo"] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Hash [ (String "foo", Integer 5) ], String "foo"));
+          ];
+        expected = Object.Integer 5;
+      };
+      (* {"foo": 5}["bar"] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Hash [ (String "foo", Integer 5) ], String "bar"));
+          ];
+        expected = Object.Null;
+      };
+      (* let key = "foo"; {"foo": 5}[key] *)
+      {
+        input =
+          [
+            Let ("key", String "foo");
+            Expression_statement
+              (Index (Hash [ (String "foo", Integer 5) ], Identifier "key"));
+          ];
+        expected = Object.Integer 5;
+      };
+      (* {}["foo"] *)
+      {
+        input = [ Expression_statement (Index (Hash [], String "foo")) ];
+        expected = Object.Null;
+      };
+      (* {5: 5}[5] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Hash [ (Integer 5, Integer 5) ], Integer 5));
+          ];
+        expected = Object.Integer 5;
+      };
+      (* {true: 5}[true] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Hash [ (Boolean true, Integer 5) ], Boolean true));
+          ];
+        expected = Object.Integer 5;
+      };
+      (* {false: 5}[false] *)
+      {
+        input =
+          [
+            Expression_statement
+              (Index (Hash [ (Boolean false, Integer 5) ], Boolean false));
+          ];
+        expected = Object.Integer 5;
+      };
+    ]
+  in
+  List.iter test_statements cases

@@ -43,6 +43,7 @@ let object_type_string = function
   | Object.Integer _ -> "INTEGER"
   | Object.String _ -> "STRING"
   | Object.Array _ -> "ARRAY"
+  | Object.Hash _ -> "HASH"
   | Object.Builtin _ -> "BUILTIN"
   | Object.Function _ -> "FUNCTION"
 
@@ -95,6 +96,7 @@ and eval_expression (expr : Ast.expression) (env : Environment.t) :
   | Ast.Boolean b -> Ok (Object.Boolean b)
   | Ast.String s -> Ok (Object.String s)
   | Ast.Array elems -> eval_array_expression elems env
+  | Ast.Hash pairs -> eval_hash_expression pairs env
   | Ast.Prefix (op, right) -> eval_prefix_expression op right env
   | Ast.Infix (left, op, right) -> eval_infix_expression left op right env
   | Ast.Index (array, index) -> eval_index_expression array index env
@@ -118,6 +120,31 @@ and eval_array_expression (elems : Ast.expression list) (env : Environment.t) :
   in
   let* values = eval_elems elems env in
   Ok (Object.Array values)
+
+and eval_hash_expression (pairs : (Ast.expression * Ast.expression) list)
+    (env : Environment.t) : (Object.t, error) result =
+  let rec eval_pairs hash pairs env =
+    match pairs with
+    | [] -> Ok hash
+    | pair :: rest -> (
+        let key, data = pair in
+        let* key = eval_expression key env in
+        let* data = eval_expression data env in
+        match key with
+        | Object.Integer _ | Object.Boolean _ | Object.String _ ->
+            let hash, ok = Object.Hash.add hash key data in
+            if ok then
+              eval_pairs hash rest env
+            else
+              Error
+                (Printf.sprintf "duplicate hash key: %s" (Object.to_string key))
+        | _ ->
+            Error
+              (Printf.sprintf "invalid hash key type: %s"
+                 (object_type_string key)))
+  in
+  let* hash = eval_pairs (Object.Hash.create ()) pairs env in
+  Ok (Object.Hash hash)
 
 and eval_prefix_expression (op : Token.t) (right : Ast.expression)
     (env : Environment.t) : (Object.t, error) result =
@@ -182,6 +209,16 @@ and eval_index_expression (array : Ast.expression) (index : Ast.expression)
         Ok Object.Null
       else
         Ok (List.nth elems n)
+  | Object.Hash hash, _ -> (
+      match index with
+      | Object.String _ | Object.Boolean _ | Object.Integer _ -> (
+          match Object.Hash.find_opt hash index with
+          | None -> Ok Object.Null
+          | Some value -> Ok value)
+      | _ ->
+          Error
+            (Printf.sprintf "invalid hash key type: %s"
+               (object_type_string index)))
   | _ ->
       Error
         (Printf.sprintf "invalid index expression: %s[%s]"

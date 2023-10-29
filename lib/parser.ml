@@ -113,6 +113,7 @@ and parse_expression (parser : t) (prec : precedence) :
     | Some (Token.Bang | Token.Minus) -> parse_prefix_expression parser
     | Some Token.Left_paren -> parse_grouped_expression parser
     | Some Token.Left_bracket -> parse_array_expression parser
+    | Some Token.Left_brace -> parse_hash_expression parser
     | Some Token.If -> parse_if_expression parser
     | Some Token.Function -> parse_function_expression parser
     | Some (Token.Illegal c) -> Error (Printf.sprintf "illegal character: %c" c)
@@ -193,6 +194,23 @@ and parse_array_expression (parser : t) : (t * Ast.expression, error) result =
   let* parser, els = parse_elements parser in
   let* parser = consume_token parser Token.Right_bracket in
   Ok (parser, Ast.Array els)
+
+and parse_hash_expression (parser : t) : (t * Ast.expression, error) result =
+  let rec parse_pairs parser =
+    match parser.token with
+    | Some Token.Right_brace -> Ok (parser, [])
+    | _ ->
+        let* parser, key = parse_expression parser Lowest in
+        let* parser = consume_token parser Token.Colon in
+        let* parser, value = parse_expression parser Lowest in
+        let parser = maybe_consume_token parser Token.Comma in
+        let* parser, pairs = parse_pairs parser in
+        Ok (parser, (key, value) :: pairs)
+  in
+  let* parser = consume_token parser Token.Left_brace in
+  let* parser, pairs = parse_pairs parser in
+  let* parser = consume_token parser Token.Right_brace in
+  Ok (parser, Ast.Hash pairs)
 
 and parse_prefix_expression (parser : t) : (t * Ast.expression, error) result =
   let parse_prefix_operator parser =

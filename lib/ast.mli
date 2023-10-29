@@ -10,6 +10,7 @@ and expression =
   | Integer of int
   | String of string
   | Array of expression list
+  | Hash of (expression * expression) list
   | Prefix of Token.t * expression
   | Infix of expression * Token.t * expression
   | Index of expression * expression
