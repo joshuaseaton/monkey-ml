@@ -59,3 +59,48 @@
  (inline_tests)
  (preprocess
   (pps ppx_inline_test ppx_assert)))
+
+(library
+ (name code)
+ (modules code)
+ (libraries base bytes sexplib)
+ (preprocess
+  (pps ppx_compare ppx_deriving.enum ppx_deriving.show ppx_sexp_conv)))
+
+(library
+ (name code_test)
+ (modules code_test)
+ (libraries base code sexplib)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_assert)))
+
+(library
+ (name compiler)
+ (modules compiler)
+ (libraries ast code object sexplib)
+ (preprocess
+  (pps ppx_compare ppx_sexp_conv)))
+
+(library
+ (name compiler_test)
+ (modules compiler_test)
+ (libraries ast base code compiler sexplib token)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_assert)))
+
+(library
+ (name vm)
+ (modules vm)
+ (libraries code compiler object)
+ (preprocess
+  (pps ppx_compare ppx_sexp_conv)))
+
+(library
+ (name vm_test)
+ (modules vm_test)
+ (libraries base code compiler object sexplib token vm)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test ppx_assert)))

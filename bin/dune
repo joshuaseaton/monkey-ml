@@ -1,4 +1,4 @@
 (executable
  (public_name repl)
  (name repl)
- (libraries evaluator lexer object parser stdio))
+ (libraries compiler lexer object parser stdio vm))
