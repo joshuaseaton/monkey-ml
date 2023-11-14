@@ -7,6 +7,7 @@ type error =
   | Insufficient_operands of Code.Opcode.t * int * int
       (** (operation, expected number, actual number) *)
   | Invalid_infix_operation of Object.t * Token.t * Object.t
+  | Invalid_prefix_operation of Token.t * Object.t
 [@@deriving compare, sexp_of]
 
 val error_to_string : error -> string

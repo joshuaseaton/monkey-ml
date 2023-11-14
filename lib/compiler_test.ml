@@ -29,7 +29,8 @@ let%test_unit "compile" =
         input = [ Expression_statement (Integer 100) ];
         expected =
           {
-            instructions = Code.Instructions.assemble [ Code.Constant 0 ];
+            instructions =
+              Code.Instructions.assemble [ Code.Constant 0; Code.Pop ];
             constants = [ Object.Integer 100 ];
           };
       };
@@ -40,7 +41,7 @@ let%test_unit "compile" =
           {
             instructions =
               Code.Instructions.assemble
-                [ Code.Constant 0; Code.Constant 1; Code.Add ];
+                [ Code.Constant 0; Code.Constant 1; Code.Add; Code.Pop ];
             constants = [ Object.Integer 1; Object.Integer 2 ];
           };
       };

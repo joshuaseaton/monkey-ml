@@ -7,6 +7,7 @@ type bytecode = {
 
 type error =
   | Invalid_infix_operator of Token.t
+  | Invalid_prefix_operator of Token.t
   | Unimplemented  (** TODO: Remove me once done. *)
 [@@deriving compare, sexp_of]
 

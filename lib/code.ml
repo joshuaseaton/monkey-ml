@@ -8,6 +8,18 @@ module Opcode = struct
   type t =
     | Constant
     | Add
+    | Pop
+    | Sub
+    | Mul
+    | Div
+    | True
+    | False
+    | Equal
+    | Not_equal
+    | Less_than
+    | Greater_than
+    | Minus
+    | Bang
   [@@deriving compare, enum, sexp_of, show { with_path = false }]
 
   let to_string = show
@@ -22,14 +34,42 @@ end
 type t =
   | Constant of int
   | Add
+  | Pop
+  | Sub
+  | Mul
+  | Div
+  | True
+  | False
+  | Equal
+  | Not_equal
+  | Less_than
+  | Greater_than
+  | Minus
+  | Bang
 [@@deriving compare, sexp_of]
 
-let to_opcode = function Constant _ -> Opcode.Constant | Add -> Opcode.Add
+let to_opcode = function
+  | Constant _ -> Opcode.Constant
+  | Add -> Opcode.Add
+  | Pop -> Opcode.Pop
+  | Sub -> Opcode.Sub
+  | Mul -> Opcode.Mul
+  | Div -> Opcode.Div
+  | True -> Opcode.True
+  | False -> Opcode.False
+  | Equal -> Opcode.Equal
+  | Not_equal -> Opcode.Not_equal
+  | Less_than -> Opcode.Less_than
+  | Greater_than -> Opcode.Greater_than
+  | Minus -> Opcode.Minus
+  | Bang -> Opcode.Bang
 
 let to_bytes (insn : t) : bytes =
   let operand_width, write_operands =
     match insn with
-    | Add -> (0, None)
+    | Add | Pop | Sub | Mul | Div | True | False | Equal | Not_equal | Less_than
+    | Greater_than | Minus | Bang ->
+        (0, None)
     | Constant u16 -> (2, Some (fun b -> Bytes.set_uint16_be b 1 u16))
   in
   (* opcode + operands *)
@@ -78,6 +118,18 @@ module Instructions = struct
           match op with
           | Opcode.Constant -> (lazy (Constant (read_u16_operand ())), 2)
           | Opcode.Add -> (lazy Add, 0)
+          | Opcode.Pop -> (lazy Pop, 0)
+          | Opcode.Sub -> (lazy Sub, 0)
+          | Opcode.Mul -> (lazy Mul, 0)
+          | Opcode.Div -> (lazy Div, 0)
+          | Opcode.True -> (lazy True, 0)
+          | Opcode.False -> (lazy False, 0)
+          | Opcode.Equal -> (lazy Equal, 0)
+          | Opcode.Not_equal -> (lazy Not_equal, 0)
+          | Opcode.Less_than -> (lazy Less_than, 0)
+          | Opcode.Greater_than -> (lazy Greater_than, 0)
+          | Opcode.Minus -> (lazy Minus, 0)
+          | Opcode.Bang -> (lazy Bang, 0)
         in
         let insn_end = pc + operand_width in
         if insn_end < Bytes.length insns then

@@ -16,6 +16,7 @@ type error =
   | Stack_overflow
   | Insufficient_operands of Code.Opcode.t * int * int
   | Invalid_infix_operation of Object.t * Token.t * Object.t
+  | Invalid_prefix_operation of Token.t * Object.t
 [@@deriving compare, sexp_of]
 
 let error_to_string = function
@@ -27,7 +28,10 @@ let error_to_string = function
       Printf.sprintf "Insufficient operands for %s; expected %d; got %d"
         (Code.Opcode.to_string op) expected actual
   | Invalid_infix_operation (left, op, right) ->
-      Printf.sprintf "%s %s %s" (Object.to_string left) (Token.to_string op)
+      Printf.sprintf "Invalid infix operation: %s %s %s" (Object.to_string left)
+        (Token.to_string op) (Object.to_string right)
+  | Invalid_prefix_operation (op, right) ->
+      Printf.sprintf "Invalid prefix operation: %s%s" (Token.to_string op)
         (Object.to_string right)
 
 let create (code : Compiler.bytecode) : t =
@@ -43,6 +47,8 @@ let stack_top (vm : t) : Object.t =
     Object.Null
   else
     Array.get vm.stack (vm.sp - 1)
+
+let last_popped (vm : t) : Object.t = Array.get vm.stack vm.sp
 
 let push (vm : t) (obj : Object.t) : (t, error) result =
   if vm.sp >= stack_size then
@@ -69,7 +75,7 @@ let get_constant (vm : t) (index : int) : Object.t = List.nth vm.constants index
 
 let rec run (vm : t) : (Object.t, error * int) result =
   let* vm = run_from vm 0 in
-  Ok (stack_top vm)
+  Ok (last_popped vm)
 
 and run_from (vm : t) (pc : int) : (t, error * int) result =
   if pc >= Bytes.length vm.instructions then
@@ -85,17 +91,82 @@ and step (vm : t) (pc : int) : (t * int, error) result =
       (Code.Instructions.disassemble_at vm.instructions pc)
   in
   match insn with
+  | Code.Pop ->
+      let vm, _ = pop vm in
+      Ok (vm, pc)
   | Code.Constant idx ->
       let* vm = push vm (get_constant vm idx) in
       Ok (vm, pc)
-  | Code.Add ->
-      let* () = ensure_enough_objects vm Code.Add 2 in
+  | (Code.True | Code.False) as op ->
+      let* vm = push vm (Object.Boolean (op == Code.True)) in
+      Ok (vm, pc)
+  | ( Code.Add | Code.Sub | Code.Mul | Code.Div | Code.Equal | Code.Not_equal
+    | Code.Less_than | Code.Greater_than ) as op ->
+      let* () = ensure_enough_objects vm op 2 in
       let vm, right = pop vm in
       let vm, left = pop vm in
+
+      let invalid_infix_op () =
+        let tok =
+          match op with
+          | Code.Add -> Token.Plus
+          | Code.Sub -> Token.Minus
+          | Code.Mul -> Token.Asterisk
+          | Code.Div -> Token.Asterisk
+          | Code.Equal -> Token.Equal
+          | Code.Not_equal -> Token.Not_equal
+          | Code.Less_than -> Token.Less_than
+          | Code.Greater_than -> Token.Greater_than
+          | _ -> failwith "unreachable"
+        in
+        Error (Invalid_infix_operation (left, tok, right))
+      in
       let* obj =
         match (left, right) with
-        | Object.Integer n, Object.Integer m -> Ok (Object.Integer (n + m))
-        | _ -> Error (Invalid_infix_operation (left, Token.Plus, right))
+        | Object.Integer n, Object.Integer m -> (
+            match op with
+            | Code.Add -> Ok (Object.Integer (n + m))
+            | Code.Sub -> Ok (Object.Integer (n - m))
+            | Code.Mul -> Ok (Object.Integer (n * m))
+            | Code.Div -> Ok (Object.Integer (n / m))
+            | Code.Equal -> Ok (Object.Boolean (n == m))
+            | Code.Not_equal -> Ok (Object.Boolean (n != m))
+            | Code.Less_than -> Ok (Object.Boolean (n < m))
+            | Code.Greater_than -> Ok (Object.Boolean (n > m))
+            | _ -> invalid_infix_op ())
+        | Object.Boolean a, Object.Boolean b -> (
+            match op with
+            | Code.Equal -> Ok (Object.Boolean (a == b))
+            | Code.Not_equal -> Ok (Object.Boolean (a != b))
+            | _ -> invalid_infix_op ())
+        | _ -> invalid_infix_op ()
+      in
+      let* vm = push vm obj in
+      Ok (vm, pc)
+  | (Code.Minus | Code.Bang) as op ->
+      let* () = ensure_enough_objects vm op 1 in
+      let vm, right = pop vm in
+
+      let invalid_prefix_op () =
+        let tok =
+          match op with
+          | Code.Minus -> Token.Minus
+          | Code.Bang -> Token.Bang
+          | _ -> failwith "unreachable"
+        in
+        Error (Invalid_prefix_operation (tok, right))
+      in
+      let* obj =
+        match op with
+        | Code.Minus -> (
+            match right with
+            | Object.Integer n -> Ok (Object.Integer (-1 * n))
+            | _ -> invalid_prefix_op ())
+        | Code.Bang -> (
+            match right with
+            | Boolean b -> Ok (Object.Boolean (not b))
+            | _ -> Ok (Object.Boolean false))
+        | _ -> invalid_prefix_op ()
       in
       let* vm = push vm obj in
       Ok (vm, pc)

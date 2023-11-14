@@ -36,7 +36,7 @@ let%test_unit "run" =
           {
             instructions =
               Code.Instructions.assemble
-                [ Code.Constant 0; Code.Constant 1; Code.Add ];
+                [ Code.Constant 0; Code.Constant 1; Code.Add; Code.Pop ];
             constants = [ Object.Integer 1; Object.Integer 2 ];
           };
         expected = Object.Integer 3;

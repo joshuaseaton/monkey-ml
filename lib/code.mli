@@ -4,6 +4,18 @@ module Opcode : sig
   type t =
     | Constant
     | Add
+    | Pop
+    | Sub
+    | Mul
+    | Div
+    | True
+    | False
+    | Equal
+    | Not_equal
+    | Less_than
+    | Greater_than
+    | Minus
+    | Bang
   [@@deriving compare, sexp_of]
 
   val to_string : t -> string
@@ -15,6 +27,18 @@ type t =
       (** A reference to a constant given by an index into a separately managed
           list of constant values. *)
   | Add
+  | Pop
+  | Sub
+  | Mul
+  | Div
+  | True
+  | False
+  | Equal
+  | Not_equal
+  | Less_than
+  | Greater_than
+  | Minus
+  | Bang
 [@@deriving compare, sexp_of]
 
 val to_opcode : t -> Opcode.t
