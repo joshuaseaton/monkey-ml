@@ -1,13 +1,13 @@
 (lang dune 3.10)
 
-(name monkeyml)
+(name monkey-ml)
 
 (generate_opam_files true)
 
 (authors "Joshua Seaton")
 
 (package
- (name monkeyml)
+ (name monkey-ml)
  (synopsis "Writing an Interpreter and Compiler in Go in OCaml")
  (description "This project is an OCaml transcription of the interpreter \
                and compiler developed over the course of Thorsten Ball's \
